@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Query, Request, status
+from fastapi import FastAPI, Query, Request, Response, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from typing import Optional
@@ -15,9 +15,6 @@ tasks_db = [
     {"id": 2, "title": "Build CRUD API endpoints", "done": False},
     {"id": 3, "title": "Test with Swagger UI", "done": False},
 ]
-
-class TaskCreate(BaseModel):
-    title: str = Field(..., description="The title of the task")
 
 @app.get("/")
 def read_root():
@@ -93,3 +90,61 @@ async def create_task(request: Request):
     }
     tasks_db.append(new_task)
     return JSONResponse(status_code=status.HTTP_201_CREATED, content=new_task)
+
+@app.put("/tasks/{task_id}")
+async def update_task(task_id: int, request: Request):
+    """Update an existing task's title and/or done status."""
+    task = next((t for t in tasks_db if t["id"] == task_id), None)
+    if not task:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"error": f"Task {task_id} not found"}
+        )
+        
+    try:
+        data = await request.json()
+    except Exception:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"error": "Invalid or missing JSON payload"}
+        )
+        
+    if not isinstance(data, dict) or not data:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"error": "Request body cannot be empty"}
+        )
+        
+    if "title" in data:
+        title = data["title"]
+        if not isinstance(title, str) or not title.strip():
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"error": "Title cannot be empty"}
+            )
+        task["title"] = title.strip()
+        
+    if "done" in data:
+        done = data["done"]
+        if not isinstance(done, bool):
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"error": "Field 'done' must be a boolean"}
+            )
+        task["done"] = done
+        
+    return task
+
+@app.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_task(task_id: int):
+    """Delete a task by ID. Returns HTTP 204 No Content upon success."""
+    global tasks_db
+    task_idx = next((i for i, t in enumerate(tasks_db) if t["id"] == task_id), None)
+    if task_idx is None:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"error": f"Task {task_id} not found"}
+        )
+        
+    tasks_db.pop(task_idx)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
