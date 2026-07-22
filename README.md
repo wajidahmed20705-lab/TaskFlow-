@@ -1,150 +1,114 @@
-# FlyRank Backend Track - Week 2 (Assignment A1): Build Your First CRUD API
+# TaskFlow - Modern FastAPI CRUD & Interactive Web Dashboard
 
-A clean, production-structured RESTful To-Do CRUD API built with **Python 3.14**, **FastAPI**, and **Uvicorn**, featuring interactive **Swagger UI** documentation (`/docs`) and in-memory state management.
+A fast, lightweight, and modern **Task Management API & Web Dashboard** built with **Python 3.14**, **FastAPI**, **Uvicorn**, and **Vanilla HTML5/CSS3/JavaScript**.
+
+Featuring interactive **Swagger OpenAPI Documentation** (`/docs`), real-time **HTTP activity logging**, search and filtering, and an in-memory RESTful engine.
+
+![TaskFlow UI Banner](https://img.shields.io/badge/FastAPI-0.100%2B-009688?style=for-the-badge&logo=fastapi&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)
 
 ---
 
-## 🚀 Quick Start (One Command)
+## ✨ Features
 
-Clone the repository, create a virtual environment, install dependencies, and start the server:
+- ⚡ **High Performance REST API**: Full CRUD endpoints for managing tasks.
+- 🎨 **Modern Dark Dashboard**: Glassmorphic UI with smooth micro-animations, statistics widgets, search bar, and filter tabs.
+- 📜 **Interactive Swagger Docs**: Built-in OpenAPI testing environment available at `/docs`.
+- 🩺 **Health & System Endpoints**: `/health` status check, `/stats` counter summary, and `/reset` data restoring.
+- 🛠️ **Live HTTP Activity Inspector**: Visual log terminal embedded in the web UI showing real-time REST requests & response codes.
+- 🛡️ **Robust Validation & Status Codes**: Standard REST compliance (`200 OK`, `201 Created`, `204 No Content`, `400 Bad Request`, `404 Not Found`).
+
+---
+
+## 🚀 Quick Start
+
+### 1. Clone & Setup Environment
 
 ```bash
-git clone https://github.com/your-username/flyrank-crud-api.git
-cd flyrank-crud-api
-python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt && uvicorn main:app --host 127.0.0.1 --port 8000 --reload
+git clone https://github.com/your-username/taskflow-fastapi.git
+cd taskflow-fastapi
 ```
 
-The API will be live at `http://localhost:8000`.
+### 2. Create Virtual Environment & Install Dependencies
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+### 3. Run Development Server
+
+```bash
+uvicorn main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+Open your browser and navigate to:
+- 🌐 **Web Dashboard**: `http://localhost:8000`
+- 📖 **Swagger UI Documentation**: `http://localhost:8000/docs`
+- ⚡ **API Meta Endpoint**: `http://localhost:8000/api`
 
 ---
 
-## 📌 API Endpoints Reference
+## 📌 REST API Endpoint Reference
 
-| Method | Endpoint | Description | Expected Status Codes |
+| Method | Endpoint | Description | Status Codes |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/` | Root endpoint displaying API name, version & endpoints | `200 OK` |
-| `GET` | `/health` | Health check endpoint returning status | `200 OK` |
-| `GET` | `/tasks` | List all tasks (supports `?done=true` & `?search=kw`) | `200 OK` |
-| `GET` | `/tasks/{id}` | Retrieve a single task by ID | `200 OK`, `404 Not Found` |
-| `POST` | `/tasks` | Create a new task (body: `{"title": "..."}`) | `201 Created`, `400 Bad Request` |
-| `PUT` | `/tasks/{id}` | Update task title and/or done status | `200 OK`, `400 Bad Request`, `404 Not Found` |
-| `DELETE` | `/tasks/{id}` | Delete task by ID | `204 No Content`, `404 Not Found` |
-| `GET` | `/stats` | Statistics summary (`total`, `done`, `open`) | `200 OK` |
-| `POST` | `/reset` | Reset database back to initial 3 sample tasks | `200 OK` |
+| `GET` | `/` | Serves the interactive Web Dashboard UI | `200 OK` |
+| `GET` | `/api` | Returns API name, version, and endpoints list | `200 OK` |
+| `GET` | `/health` | Health check endpoint for uptime monitors | `200 OK` |
+| `GET` | `/tasks` | List all tasks (supports `?done=true` and `?search=kw`) | `200 OK` |
+| `GET` | `/tasks/{id}` | Retrieve a specific task by numeric ID | `200 OK`, `404 Not Found` |
+| `POST` | `/tasks` | Create a new task (body: `{"title": "Buy milk"}`) | `201 Created`, `400 Bad Request` |
+| `PUT` | `/tasks/{id}` | Update task title or completed status | `200 OK`, `400 Bad Request`, `404 Not Found` |
+| `DELETE` | `/tasks/{id}` | Delete task by numeric ID | `204 No Content`, `404 Not Found` |
+| `GET` | `/stats` | Returns counter statistics (`total`, `done`, `open`) | `200 OK` |
+| `POST` | `/reset` | Restores default sample data | `200 OK` |
 
 ---
 
-## 🧪 Sample `curl -i` Verification Outputs
+## 💻 Example `curl` Commands
 
-### 1. Read All Tasks (`GET /tasks`)
-```http
-HTTP/1.1 200 OK
-date: Wed, 22 Jul 2026 22:04:19 GMT
-server: uvicorn
-content-length: 172
-content-type: application/json
-
-[
-  {"id":1,"title":"Setup development environment","done":true},
-  {"id":2,"title":"Build CRUD API endpoints","done":false},
-  {"id":3,"title":"Test with Swagger UI","done":false}
-]
+### Create a Task
+```bash
+curl -i -X POST http://localhost:8000/tasks \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Build a FastAPI Web Dashboard"}'
 ```
 
-### 2. Create Task with Validation (`POST /tasks`)
-```http
-HTTP/1.1 201 Created
-date: Wed, 22 Jul 2026 22:05:32 GMT
-server: uvicorn
-content-length: 40
-content-type: application/json
-
-{"id":4,"title":"Buy milk","done":false}
+### List Tasks with Search Filter
+```bash
+curl -i "http://localhost:8000/tasks?search=FastAPI&done=false"
 ```
 
-```http
-HTTP/1.1 400 Bad Request
-date: Wed, 22 Jul 2026 22:05:32 GMT
-server: uvicorn
-content-length: 33
-content-type: application/json
-
-{"error":"Title cannot be empty"}
+### Update Task Status
+```bash
+curl -i -X PUT http://localhost:8000/tasks/1 \
+  -H "Content-Type: application/json" \
+  -d '{"done": true}'
 ```
 
-### 3. Update Task (`PUT /tasks/2`)
-```http
-HTTP/1.1 200 OK
-date: Wed, 22 Jul 2026 22:06:50 GMT
-server: uvicorn
-content-length: 55
-content-type: application/json
-
-{"id":2,"title":"Build CRUD API endpoints","done":true}
-```
-
-### 4. Delete Task (`DELETE /tasks/3`)
-```http
-HTTP/1.1 204 No Content
-date: Wed, 22 Jul 2026 22:06:50 GMT
-server: uvicorn
-```
-
-### 5. Unknown Resource handling (`GET /tasks/99`)
-```http
-HTTP/1.1 404 Not Found
-date: Wed, 22 Jul 2026 22:04:20 GMT
-server: uvicorn
-content-length: 29
-content-type: application/json
-
-{"error":"Task 99 not found"}
+### Delete a Task
+```bash
+curl -i -X DELETE http://localhost:8000/tasks/1
 ```
 
 ---
 
-## 📖 Swagger UI Interactive Documentation
+## 📁 Project Structure
 
-FastAPI automatically generates interactive OpenAPI documentation.
-
-Visit **`http://localhost:8000/docs`** in your browser to view the interactive Swagger UI interface. You can click **"Try it out"** on any endpoint to test all CRUD requests directly from your web browser without typing `curl` commands.
-
----
-
-## 💡 The Mortality Experiment
-
-When new tasks were created or modified and the FastAPI server process was restarted, all newly created tasks disappeared and the list reverted back to the initial 3 sample tasks. 
-This occurs because task data is stored purely in an **in-memory Python list (`tasks_db`)** rather than a persistent database. Once the process terminates, its RAM memory state is discarded.
+```text
+├── main.py              # FastAPI application server & route handlers
+├── static/
+│   └── index.html       # Single-page web dashboard application
+├── requirements.txt     # Python package dependencies
+├── .gitignore           # Git ignore settings
+└── README.md            # Project documentation
+```
 
 ---
 
-## 🥊 Stage 7: AI vs Me
+## 📄 License
 
-### Prompt Used
-> "Build a Python FastAPI REST API that manages an in-memory to-do list. Include endpoints for GET /, GET /health, GET /tasks, GET /tasks/{id}, POST /tasks, PUT /tasks/{id}, and DELETE /tasks/{id}. Ensure correct HTTP status codes (200, 201, 204, 400, 404), return json error messages when title is missing or empty, auto-increment IDs, and support built-in Swagger UI at /docs."
-
-### Key Differences Found
-
-1. **Error Response Key Formatting**:
-   - **AI Generation**: Returned default FastAPI Pydantic validation errors structured as `{"detail": [...]}`.
-   - **Hand-built API**: Explicitly mapped custom JSON error responses to `{"error": "Task 99 not found"}` matching the exact spec requirements.
-
-2. **Validation Rigor**:
-   - **AI Generation**: Checked if `title` string existed, but allowed whitespace-only strings (e.g. `"   "`).
-   - **Hand-built API**: Trimmed strings (`title.strip()`) and returned `400 Bad Request` if whitespace-only.
-
-3. **Status Code Precision**:
-   - **AI Generation**: Returned `200 OK` with `{"message": "deleted"}` on `DELETE /tasks/{id}` instead of HTTP `204 No Content`.
-   - **Hand-built API**: Used exact REST standards (`204 No Content` with an empty response body).
-
----
-
-## 📜 Commit History
-
-- `ed745e5` Stage 0: hello server
-- `17812b3` Stage 1: root and health endpoints
-- `6deea2c` Stage 2: read endpoints with 404
-- `99bf74f` Stage 3: create with validation
-- `f097971` Stage 4: full CRUD
-- `c53cf0b` Stage 5: Swagger UI
-- `Stage 6: publish and docs`
+This project is open-source and available under the [MIT License](LICENSE).

@@ -1,15 +1,22 @@
+import os
 from fastapi import FastAPI, Query, Request, Response, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from typing import Optional, List
 
 app = FastAPI(
     title="Task Management API",
     version="1.0.0",
-    description="A lightweight in-memory CRUD REST API for managing tasks, built with FastAPI and OpenAPI Swagger UI.",
+    description="A lightweight in-memory REST API and web dashboard for managing tasks, built with FastAPI and OpenAPI Swagger UI.",
     docs_url="/docs",
     redoc_url="/redoc"
 )
+
+# Mount static folder for serving CSS/JS assets
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+if os.path.exists(static_dir):
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 # Initial sample tasks list
 INITIAL_TASKS = [
@@ -48,9 +55,18 @@ class ErrorSchema(BaseModel):
     error: str = Field(..., example="Task not found", description="Error message explanation")
 
 
-# Endpoints
-@app.get("/", tags=["System"], summary="API Root", response_model=dict)
-def read_root():
+# Web Dashboard & Root Info
+@app.get("/", tags=["Dashboard"], summary="Web Dashboard UI")
+def read_dashboard():
+    """Serves the interactive TaskFlow web dashboard interface."""
+    index_file = os.path.join(static_dir, "index.html")
+    if os.path.exists(index_file):
+        return FileResponse(index_file)
+    return {"name": "Task API", "version": "1.0", "endpoints": ["/tasks", "/health", "/stats", "/docs"]}
+
+
+@app.get("/api", tags=["System"], summary="API Overview Info", response_model=dict)
+def read_api_info():
     """Returns basic API description, version info, and available endpoint resources."""
     return {
         "name": "Task API",
