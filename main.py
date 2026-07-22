@@ -1,41 +1,76 @@
 from fastapi import FastAPI, Query, Request, Response, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List
 
 app = FastAPI(
-    title="Task API",
-    version="1.0",
-    description="A simple task management CRUD API built with FastAPI"
+    title="Task Management API",
+    version="1.0.0",
+    description="A lightweight in-memory CRUD REST API for managing tasks, built with FastAPI and OpenAPI Swagger UI.",
+    docs_url="/docs",
+    redoc_url="/redoc"
 )
 
-# Initial in-memory task database pre-filled with 3 tasks
-tasks_db = [
+# Initial sample tasks list
+INITIAL_TASKS = [
     {"id": 1, "title": "Setup development environment", "done": True},
     {"id": 2, "title": "Build CRUD API endpoints", "done": False},
     {"id": 3, "title": "Test with Swagger UI", "done": False},
 ]
 
-@app.get("/")
+# In-memory storage
+tasks_db = list(INITIAL_TASKS)
+
+
+# Pydantic Schemas for Swagger Documentation
+class TaskSchema(BaseModel):
+    id: int = Field(..., example=1, description="Unique identifier for the task")
+    title: str = Field(..., example="Buy milk", description="Title or description of the task")
+    done: bool = Field(..., example=False, description="Completion status of the task")
+
+
+class TaskCreateSchema(BaseModel):
+    title: str = Field(..., example="Buy milk", description="Title of the new task")
+
+
+class TaskUpdateSchema(BaseModel):
+    title: Optional[str] = Field(None, example="Buy groceries", description="Updated title")
+    done: Optional[bool] = Field(None, example=True, description="Updated completion status")
+
+
+class StatsSchema(BaseModel):
+    total: int = Field(..., example=3, description="Total number of tasks")
+    done: int = Field(..., example=1, description="Number of completed tasks")
+    open: int = Field(..., example=2, description="Number of pending tasks")
+
+
+class ErrorSchema(BaseModel):
+    error: str = Field(..., example="Task not found", description="Error message explanation")
+
+
+# Endpoints
+@app.get("/", tags=["System"], summary="API Root", response_model=dict)
 def read_root():
-    """Returns basic API information and available endpoints."""
+    """Returns basic API description, version info, and available endpoint resources."""
     return {
         "name": "Task API",
         "version": "1.0",
-        "endpoints": ["/tasks"]
+        "endpoints": ["/tasks", "/health", "/stats", "/docs"]
     }
 
-@app.get("/health")
+
+@app.get("/health", tags=["System"], summary="Health Check", response_model=dict)
 def read_health():
-    """Health check endpoint to verify server is operational."""
+    """Health check endpoint used by uptime monitors to verify the server is running."""
     return {"status": "ok"}
 
-@app.get("/tasks")
+
+@app.get("/tasks", tags=["Tasks"], summary="List All Tasks", response_model=List[TaskSchema])
 def get_tasks(
-    done: Optional[bool] = Query(None, description="Filter tasks by completion status"),
-    search: Optional[str] = Query(None, description="Search tasks by title keyword")
+    done: Optional[bool] = Query(None, description="Filter tasks by completion status (true/false)"),
+    search: Optional[str] = Query(None, description="Search tasks matching keyword in title")
 ):
-    """Retrieve all tasks with optional filtering by done status and search keyword."""
+    """Retrieve all tasks from in-memory storage, with optional query filtering by status and search terms."""
     filtered_tasks = tasks_db
     
     if done is not None:
@@ -47,9 +82,16 @@ def get_tasks(
         
     return filtered_tasks
 
-@app.get("/tasks/{task_id}")
+
+@app.get(
+    "/tasks/{task_id}",
+    tags=["Tasks"],
+    summary="Get Single Task",
+    response_model=TaskSchema,
+    responses={404: {"model": ErrorSchema, "description": "Task not found"}}
+)
 def get_task(task_id: int):
-    """Retrieve a single task by ID. Returns HTTP 404 if task is not found."""
+    """Retrieve a single task object by its numeric ID. Returns 404 if not found."""
     for task in tasks_db:
         if task["id"] == task_id:
             return task
@@ -58,9 +100,17 @@ def get_task(task_id: int):
         content={"error": f"Task {task_id} not found"}
     )
 
-@app.post("/tasks", status_code=status.HTTP_201_CREATED)
+
+@app.post(
+    "/tasks",
+    tags=["Tasks"],
+    summary="Create New Task",
+    status_code=status.HTTP_201_CREATED,
+    response_model=TaskSchema,
+    responses={400: {"model": ErrorSchema, "description": "Bad Request / Validation Error"}}
+)
 async def create_task(request: Request):
-    """Create a new task. Requires a non-empty title string in JSON body."""
+    """Create a new task. Requires a JSON payload with a non-empty `title`."""
     try:
         data = await request.json()
     except Exception:
@@ -91,9 +141,19 @@ async def create_task(request: Request):
     tasks_db.append(new_task)
     return JSONResponse(status_code=status.HTTP_201_CREATED, content=new_task)
 
-@app.put("/tasks/{task_id}")
+
+@app.put(
+    "/tasks/{task_id}",
+    tags=["Tasks"],
+    summary="Update Task",
+    response_model=TaskSchema,
+    responses={
+        400: {"model": ErrorSchema, "description": "Validation Error"},
+        404: {"model": ErrorSchema, "description": "Task not found"}
+    }
+)
 async def update_task(task_id: int, request: Request):
-    """Update an existing task's title and/or done status."""
+    """Update an existing task's title and/or done completion status."""
     task = next((t for t in tasks_db if t["id"] == task_id), None)
     if not task:
         return JSONResponse(
@@ -135,7 +195,14 @@ async def update_task(task_id: int, request: Request):
         
     return task
 
-@app.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
+
+@app.delete(
+    "/tasks/{task_id}",
+    tags=["Tasks"],
+    summary="Delete Task",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={404: {"model": ErrorSchema, "description": "Task not found"}}
+)
 def delete_task(task_id: int):
     """Delete a task by ID. Returns HTTP 204 No Content upon success."""
     global tasks_db
@@ -148,3 +215,25 @@ def delete_task(task_id: int):
         
     tasks_db.pop(task_idx)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# Bonus Endpoints
+@app.get("/stats", tags=["Extras"], summary="Task Statistics", response_model=StatsSchema)
+def get_stats():
+    """Retrieve statistical counters for total, completed, and pending tasks."""
+    total = len(tasks_db)
+    done_count = sum(1 for t in tasks_db if t["done"])
+    open_count = total - done_count
+    return {
+        "total": total,
+        "done": done_count,
+        "open": open_count
+    }
+
+
+@app.post("/reset", tags=["Extras"], summary="Reset Tasks Database", response_model=dict)
+def reset_tasks():
+    """Reset the in-memory task database back to the initial 3 sample tasks."""
+    global tasks_db
+    tasks_db = [dict(t) for t in INITIAL_TASKS]
+    return {"message": "Database reset to initial sample tasks", "tasks": tasks_db}
