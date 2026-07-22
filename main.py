@@ -1,5 +1,6 @@
-from fastapi import FastAPI, Query, status
+from fastapi import FastAPI, Query, Request, status
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
 from typing import Optional
 
 app = FastAPI(
@@ -14,6 +15,9 @@ tasks_db = [
     {"id": 2, "title": "Build CRUD API endpoints", "done": False},
     {"id": 3, "title": "Test with Swagger UI", "done": False},
 ]
+
+class TaskCreate(BaseModel):
+    title: str = Field(..., description="The title of the task")
 
 @app.get("/")
 def read_root():
@@ -56,3 +60,36 @@ def get_task(task_id: int):
         status_code=status.HTTP_404_NOT_FOUND,
         content={"error": f"Task {task_id} not found"}
     )
+
+@app.post("/tasks", status_code=status.HTTP_201_CREATED)
+async def create_task(request: Request):
+    """Create a new task. Requires a non-empty title string in JSON body."""
+    try:
+        data = await request.json()
+    except Exception:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"error": "Invalid or missing JSON payload"}
+        )
+        
+    if not isinstance(data, dict) or "title" not in data:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"error": "Title is required"}
+        )
+        
+    title = data.get("title")
+    if not isinstance(title, str) or not title.strip():
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"error": "Title cannot be empty"}
+        )
+        
+    next_id = max([t["id"] for t in tasks_db], default=0) + 1
+    new_task = {
+        "id": next_id,
+        "title": title.strip(),
+        "done": False
+    }
+    tasks_db.append(new_task)
+    return JSONResponse(status_code=status.HTTP_201_CREATED, content=new_task)
