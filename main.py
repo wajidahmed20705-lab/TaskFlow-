@@ -55,7 +55,7 @@ class ErrorSchema(BaseModel):
     error: str = Field(..., example="Task not found", description="Error message explanation")
 
 
-# Web Dashboard & Root Info
+# Web Dashboard & Favicon & Root Info
 @app.get("/", tags=["Dashboard"], summary="Web Dashboard UI")
 def read_dashboard():
     """Serves the interactive TaskFlow web dashboard interface."""
@@ -63,6 +63,12 @@ def read_dashboard():
     if os.path.exists(index_file):
         return FileResponse(index_file)
     return {"name": "Task API", "version": "1.0", "endpoints": ["/tasks", "/health", "/stats", "/docs"]}
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    """Returns 204 No Content for favicon requests to prevent log noise."""
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @app.get("/api", tags=["System"], summary="API Overview Info", response_model=dict)
